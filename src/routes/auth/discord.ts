@@ -86,6 +86,7 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     const em = getEntityManager();
     const user = await findOneOrCreate(em, User, {id: BigInt(data.user.id)});
     user.username = data.user.username;
+    user.avatarUrl = `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=128`;
     await em.flush();
     const token = await createAuthToken({sub: data.user.id});
     res.cookie(AUTH_TOKEN_COOKIE_NAME, token, {

@@ -5,6 +5,7 @@ export const UserSchema = defineEntity({
     properties: {
         id: p.bigint().primary(),
         username: p.string(),
+        avatarUrl: p.string().nullable(),
         roles: () => p.oneToMany(RoleSchema)
             .mappedBy("user")
             .serializer((roles) => (roles as unknown as Collection<Role>).getItems(false).map((role) => role.role)),
