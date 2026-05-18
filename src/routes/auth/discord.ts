@@ -95,7 +95,7 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         secure: IS_PROD,
         sameSite: "lax" as const,
         path: "/",
-        maxAge: 1000 * 60 * 10, // 10 minutes
+        maxAge: 7 * 86400 * 1000, // 7 days
     });
 
     res.json({success: true, token});
