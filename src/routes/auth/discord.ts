@@ -99,8 +99,8 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         maxAge: 7 * 86400 * 1000, // 7 days
     });
 
-    if (req.headers.referer) {
-        res.redirect(req.headers.referer);
+    if (payload.referrer !== "") {
+        res.redirect(payload.referrer);
     } else {
         res.json({success: true, token});
     }
