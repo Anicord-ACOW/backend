@@ -32,7 +32,7 @@ const client = new AuthorizationCode({
 
 router.get("/auth/discord/login", oauthRateLimiter, (req, res) => {
     const state = generateOAuthState();
-    res.cookie(oAuthStateCookieName(ID), encryptCookie(state), {
+    res.cookie(oAuthStateCookieName(ID), encryptCookie(state, {referrer: req.headers.referer || ""}), {
         signed: true,
         httpOnly: true,
         secure: IS_PROD,
@@ -58,7 +58,8 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         sameSite: "lax",
         path: "/",
     });
-    if (!returnedState || !verifyCookie(storedState, returnedState as string)) {
+    const payload = verifyCookie(storedState, returnedState as string);
+    if (!returnedState) {
         throw new APIError(400);
     }
 
@@ -98,7 +99,11 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         maxAge: 7 * 86400 * 1000, // 7 days
     });
 
-    res.json({success: true, token});
+    if (req.headers.referer) {
+        res.redirect(req.headers.referer);
+    } else {
+        res.json({success: true, token});
+    }
 });
 
 export default router;
