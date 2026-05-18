@@ -1,12 +1,15 @@
 import {timingSafeEqual} from "crypto";
 import {createAuthToken, verifyAuthToken} from "@/helpers/auth-tokens";
 
+export const IS_PROD = process.env.NODE_ENV === "production";
+export const AUTH_TOKEN_COOKIE_NAME = IS_PROD ? "__Host-auth-token" : "auth-token";
+
 export function generateOAuthState() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
 export function oAuthStateCookieName(provider: string) {
-    // return `__Host-oauth-state-${provider}`;
+    if (IS_PROD) return `__Host-oauth-state-${provider}`;
     return `oauth-state-${provider}`;
 }
 

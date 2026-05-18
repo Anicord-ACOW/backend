@@ -1,7 +1,14 @@
 import {Router} from "express";
 import {AuthorizationCode} from "simple-oauth2";
 import {createAuthToken} from "@/helpers/auth-tokens";
-import {encryptCookie, generateOAuthState, oAuthStateCookieName, verifyCookie} from "@/helpers/auth";
+import {
+    AUTH_TOKEN_COOKIE_NAME,
+    encryptCookie,
+    generateOAuthState,
+    IS_PROD,
+    oAuthStateCookieName,
+    verifyCookie
+} from "@/helpers/auth";
 import {findOneOrCreate, getEntityManager} from "@/helpers/db";
 import {User} from "@/helpers/models/user";
 import {oauthRateLimiter} from "@/helpers/rate-limit";
@@ -28,7 +35,7 @@ router.get("/auth/discord/login", oauthRateLimiter, (req, res) => {
     res.cookie(oAuthStateCookieName(ID), encryptCookie(state), {
         signed: true,
         httpOnly: true,
-        // secure: true,
+        secure: IS_PROD,
         sameSite: "lax" as const,
         path: "/",
         maxAge: 1000 * 60 * 10, // 10 minutes
@@ -47,7 +54,7 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     res.clearCookie(oAuthStateCookieName(ID), {
         signed: true,
         httpOnly: true,
-        // secure: true,
+        secure: IS_PROD,
         sameSite: "lax",
         path: "/",
     });
@@ -81,6 +88,14 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     user.username = data.user.username;
     await em.flush();
     const token = await createAuthToken({sub: data.user.id});
+    res.cookie(AUTH_TOKEN_COOKIE_NAME, token, {
+        signed: false,
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: "lax" as const,
+        path: "/",
+        maxAge: 1000 * 60 * 10, // 10 minutes
+    });
 
     res.json({success: true, token});
 });

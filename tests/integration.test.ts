@@ -2,6 +2,7 @@ import {type Server} from "node:http";
 import type {Express} from "express";
 import {afterAll, beforeAll, describe, expect, it, vi} from "vitest";
 import {createAuthToken} from "@/helpers/auth-tokens";
+import {AUTH_TOKEN_COOKIE_NAME} from "@/helpers/auth";
 
 let server: Server;
 let baseUrl: string;
@@ -104,6 +105,27 @@ describe("integration test", () => {
             user: {
                 id: "2",
                 username: "user2",
+            }
+        });
+    });
+
+    it("uses the token header", async () => {
+        const token = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/users/me`, {
+            headers: {
+                Cookie: `${AUTH_TOKEN_COOKIE_NAME}=${token}`,
+            },
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({
+            success: true,
+            user: {
+                id: "1",
+                username: "admin1",
+                roles: [
+                    "admin"
+                ]
             }
         });
     });

@@ -1,10 +1,11 @@
 import {NextFunction, Request, Response} from "express";
 import {verifyAuthToken} from "@/helpers/auth-tokens";
-import {Role, User} from "@/helpers/models/user";
+import {User} from "@/helpers/models/user";
 import {APIError} from "@/helpers/api-error";
+import {AUTH_TOKEN_COOKIE_NAME} from "@/helpers/auth";
 
 export async function auth(req: Request, res: Response, next: NextFunction) {
-    const token = req.headers.authorization;
+    const token = req.headers.authorization || req.cookies[AUTH_TOKEN_COOKIE_NAME];
     if (token === undefined) return next();
 
     const payload = verifyAuthToken(token);
