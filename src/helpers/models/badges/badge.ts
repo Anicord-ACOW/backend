@@ -13,6 +13,9 @@ export const BadgeSchema = defineEntity({
         imageId: p.string().default(""),
         description: p.string().default(""),
         objective: p.string().default(""),
+
+        createdAt: p.datetime().onCreate(() => new Date()),
+        updatedAt: p.datetime().onCreate(() => new Date()).onUpdate(() => new Date()),
     },
 });
 

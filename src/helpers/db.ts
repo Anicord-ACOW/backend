@@ -8,6 +8,10 @@ export function getEntityManager() {
     return orm.em.fork();
 }
 
+export async function closeDatabase() {
+    await orm.close(true);
+}
+
 export async function findOneOrCreate<
     Entity extends object,
 >(

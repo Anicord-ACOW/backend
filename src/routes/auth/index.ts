@@ -3,6 +3,6 @@ import discord from "@/routes/auth/discord";
 
 const router = Router();
 
-router.use("/discord", discord);
+router.use("/", discord);
 
 export default router;

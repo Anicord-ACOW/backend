@@ -1,6 +1,7 @@
 import {defineEntity, p} from "@mikro-orm/core";
 import {User} from "@/helpers/models/user";
 import {sqlSet} from "@/helpers/db-common";
+import {Season} from "@/helpers/models/season/season";
 
 // these values came from the google form
 const PC_POWER = ["HIGH", "MID", "LOW", "POTATO"] as const;
@@ -84,3 +85,14 @@ export const SignUpFormSchema = defineEntity({
 export class SignupForm extends SignUpFormSchema.class {}
 
 SignUpFormSchema.setClass(SignupForm);
+
+export const SignUpSchema = defineEntity({
+    name: "SignUp",
+    properties: {
+        user: () => p.manyToOne(User).joinColumn("user").referenceColumnName("id").primary(),
+        season: p.manyToOne(Season).mapToPk().joinColumn("season").referenceColumnName("id").primary(),
+
+        createdAt: p.datetime().onCreate(() => new Date()),
+        updatedAt: p.datetime().onCreate(() => new Date()).onUpdate(() => new Date()),
+    },
+});

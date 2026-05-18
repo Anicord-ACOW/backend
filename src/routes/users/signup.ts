@@ -1,26 +1,14 @@
 import {Request, Router} from "express";
 import {findOneOrCreate, getEntityManager} from "@/helpers/db";
-import {SignUpFormSchema, SignupForm} from "@/helpers/models/signup";
+import {SignUpFormSchema, SignupForm} from "@/helpers/models/season/signup";
 import {parseModelPatch} from "@/helpers/patch";
-import {requireAuth} from "@/middleware/auth";
+import {requireAllRoles, requireAuth} from "@/middleware/auth";
 import {readRateLimiter, writeRateLimiter} from "@/helpers/rate-limit";
 
 const router = Router();
 
-function authUserId(req: Request) {
-    const id = req.auth?.sub;
-    if (id === undefined) return null;
-
-    try {
-        return BigInt(id);
-    } catch {
-        return null;
-    }
-}
-
-router.get("/template/me", readRateLimiter, requireAuth, async (req, res) => {
-    const userId = authUserId(req);
-    if (userId === null) return res.status(401).json({success: false});
+router.get("/users/me/signup-form", readRateLimiter, requireAuth, async (req, res) => {
+    const userId = req.auth!.id;
 
     const em = getEntityManager();
     const form = await findOneOrCreate(em, SignupForm, {user: userId});
@@ -30,18 +18,41 @@ router.get("/template/me", readRateLimiter, requireAuth, async (req, res) => {
     });
 });
 
-router.patch("/template/me", writeRateLimiter, requireAuth, async (req, res) => {
-    const userId = authUserId(req);
-    if (userId === null) return res.status(401).json({success: false});
-
-    const result = parseModelPatch(req.body, SignUpFormSchema, {
-        exclude: ["id", "user", "userId"],
-    });
-    if (!result.success) return res.status(400).json({success: false, error: result.error});
+router.get("/users/:userId/signup-form", readRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
+    const userId = BigInt(req.params.userId as string);
 
     const em = getEntityManager();
     const form = await findOneOrCreate(em, SignupForm, {user: userId});
-    Object.assign(form, result.patch);
+    res.json({
+        success: true,
+        form,
+    });
+});
+
+router.patch("/users/me/signup-form", writeRateLimiter, requireAuth, async (req, res) => {
+    const userId = req.auth!.id;
+
+    const result = parseModelPatch(req.body, SignUpFormSchema);
+
+    const em = getEntityManager();
+    const form = await findOneOrCreate(em, SignupForm, {user: userId});
+    Object.assign(form, result);
+    await em.flush();
+
+    res.json({
+        success: true,
+        form,
+    });
+});
+
+router.patch("/users/:userId/signup-form", writeRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
+    const userId = BigInt(req.params.userId as string);
+
+    const result = parseModelPatch(req.body, SignUpFormSchema);
+
+    const em = getEntityManager();
+    const form = await findOneOrCreate(em, SignupForm, {user: userId});
+    Object.assign(form, result);
     await em.flush();
 
     res.json({

@@ -73,17 +73,17 @@ describe("auth", () => {
     expect(() => verifyAuthToken(token)).toThrow();
   });
 
-  it("requires JWT_PRIVATE_KEY_PATH to create tokens", () => {
+  it("requires JWT_PRIVATE_KEY_PATH to exist to create tokens", () => {
     delete process.env.JWT_PRIVATE_KEY_PATH;
 
-    expect(() => createAuthToken({userId: "123"})).toThrow("JWT_PRIVATE_KEY_PATH must be set");
+    expect(() => createAuthToken({userId: "123"})).toThrow(/^ENOENT: /);
   });
 
-  it("requires JWT_PUBLIC_KEY_PATH to verify tokens", () => {
+  it("requires JWT_PUBLIC_KEY_PATH to exist to verify tokens", () => {
     const token = createAuthToken({userId: "123"});
 
     delete process.env.JWT_PUBLIC_KEY_PATH;
 
-    expect(() => verifyAuthToken(token)).toThrow("JWT_PUBLIC_KEY_PATH must be set");
+    expect(() => verifyAuthToken(token)).toThrow(/^ENOENT: /);
   });
 });

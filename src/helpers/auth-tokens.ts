@@ -5,13 +5,13 @@ const DEFAULT_TOKEN_EXPIRY = 604800;
 const DEFAULT_ALGORITHM = "RS512" as jwt.Algorithm;
 
 function getJwtPrivateKey() {
-  const keyPath = process.env.JWT_PRIVATE_KEY_PATH;
+  const keyPath = process.env.JWT_PRIVATE_KEY_PATH || "/run/secrets/jwt_private_key";
   if (!keyPath) throw new Error("JWT_PRIVATE_KEY_PATH must be set");
   return readFileSync(keyPath, "utf8");
 }
 
 function getJwtPublicKey() {
-  const keyPath = process.env.JWT_PUBLIC_KEY_PATH;
+  const keyPath = process.env.JWT_PUBLIC_KEY_PATH || "/run/secrets/jwt_public_key";
   if (!keyPath) throw new Error("JWT_PUBLIC_KEY_PATH must be set");
   return readFileSync(keyPath, "utf8");
 }

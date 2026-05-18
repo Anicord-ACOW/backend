@@ -1,0 +1,69 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - type: bind
+        source: ./keys
+        target: /app/keys
+        read_only: true
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+    command:
+      - sh
+      - -ec
+      - |
+        db_name="$$(cat /run/secrets/db_name)"
+        db_user="$$(cat /run/secrets/db_user)"
+        db_password="$$(cat /run/secrets/db_password)"
+        export MYSQL="mysql://$${db_user}:$${db_password}@mariadb:3306/$${db_name}"
+        exec npm start
+
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE_FILE: /run/secrets/db_name
+      MARIADB_USER_FILE: /run/secrets/db_user
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+      - db_root_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -uroot --password=\"$$(cat /run/secrets/db_root_password)\" --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+secrets:
+  db_name:
+    file: ./.docker-secrets/db_name
+  db_user:
+    file: ./.docker-secrets/db_user
+  db_password:
+    file: ./.docker-secrets/db_password
+  db_root_password:
+    file: ./.docker-secrets/db_root_password
+
+volumes:
+  mariadb_data:

@@ -1,9 +1,11 @@
-import type {JwtPayload} from "jsonwebtoken";
+import {EntityManager} from "@mikro-orm/core";
+import {User} from "@/helpers/models/user";
 
 declare global {
   namespace Express {
     interface Request {
-      auth?: JwtPayload;
+      auth?: User;
+      em: EntityManager;
     }
   }
 }

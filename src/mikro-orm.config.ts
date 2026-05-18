@@ -1,11 +1,11 @@
 import {defineConfig} from "@mikro-orm/mariadb";
-import {UserSchema} from "@/helpers/models/user";
-import {SignUpFormSchema} from "@/helpers/models/signup";
+import {RoleSchema, UserSchema} from "@/helpers/models/user";
+import {SignUpFormSchema, SignUpSchema} from "@/helpers/models/season/signup";
 import {BadgeSchema} from "@/helpers/models/badges/badge";
 import {BadgeProgressSchema} from "@/helpers/models/badges/badge-progress";
 import {ContractSchema} from "@/helpers/models/contracts/contract";
 import {ContractTypeSchema} from "@/helpers/models/contracts/contract-type";
-import {SeasonSchema} from "@/helpers/models/contracts/season";
+import {SeasonSchema} from "@/helpers/models/season/season";
 
 try {
     process.loadEnvFile(".env");
@@ -24,7 +24,9 @@ export default defineConfig({
     // explicitly list your entities - we'll create the User entity next
     entities: [
         UserSchema,
+        RoleSchema,
         SignUpFormSchema,
+        SignUpSchema,
         BadgeSchema,
         BadgeProgressSchema,
         ContractSchema,
