@@ -1,7 +1,14 @@
 import {Router} from "express";
 import {AuthorizationCode} from "simple-oauth2";
 import {createAuthToken} from "@/helpers/auth-tokens";
-import {encryptCookie, generateOAuthState, oAuthStateCookieName, verifyCookie} from "@/helpers/auth";
+import {
+    AUTH_TOKEN_COOKIE_NAME,
+    encryptCookie,
+    generateOAuthState,
+    IS_PROD,
+    oAuthStateCookieName,
+    verifyCookie
+} from "@/helpers/auth";
 import {findOneOrCreate, getEntityManager} from "@/helpers/db";
 import {User} from "@/helpers/models/user";
 import {oauthRateLimiter} from "@/helpers/rate-limit";
@@ -25,10 +32,10 @@ const client = new AuthorizationCode({
 
 router.get("/auth/discord/login", oauthRateLimiter, (req, res) => {
     const state = generateOAuthState();
-    res.cookie(oAuthStateCookieName(ID), encryptCookie(state), {
+    res.cookie(oAuthStateCookieName(ID), encryptCookie(state, {referrer: req.headers.referer || ""}), {
         signed: true,
         httpOnly: true,
-        // secure: true,
+        secure: IS_PROD,
         sameSite: "lax" as const,
         path: "/",
         maxAge: 1000 * 60 * 10, // 10 minutes
@@ -47,11 +54,12 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     res.clearCookie(oAuthStateCookieName(ID), {
         signed: true,
         httpOnly: true,
-        // secure: true,
+        secure: IS_PROD,
         sameSite: "lax",
         path: "/",
     });
-    if (!returnedState || !verifyCookie(storedState, returnedState as string)) {
+    const payload = verifyCookie(storedState, returnedState as string);
+    if (!returnedState) {
         throw new APIError(400);
     }
 
@@ -79,10 +87,23 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     const em = getEntityManager();
     const user = await findOneOrCreate(em, User, {id: BigInt(data.user.id)});
     user.username = data.user.username;
+    user.avatarUrl = `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=128`;
     await em.flush();
     const token = await createAuthToken({sub: data.user.id});
+    res.cookie(AUTH_TOKEN_COOKIE_NAME, token, {
+        signed: false,
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: "lax" as const,
+        path: "/",
+        maxAge: 7 * 86400 * 1000, // 7 days
+    });
 
-    res.json({success: true, token});
+    if (payload.referrer !== "") {
+        res.redirect(payload.referrer);
+    } else {
+        res.json({success: true, token});
+    }
 });
 
 export default router;

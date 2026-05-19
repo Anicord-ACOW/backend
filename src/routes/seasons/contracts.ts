@@ -50,7 +50,6 @@ router.post("/seasons/:id/contract-types/:slug/contracts", writeRateLimiter, req
     contract.contractType = contractType;
     contract.season = season.id;
     await req.em.flush();
-    await contract
     res.json({success: true, contract});
 });
 

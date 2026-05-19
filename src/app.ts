@@ -14,6 +14,7 @@ app.use(express.json({limit: "50kb"}));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.get("/version", (req, res) => res.json({version: process.env.GIT_COMMIT || "unknown"}));
 app.use((req, res, next) => {
     req.em = getEntityManager();
     next();
