@@ -12,14 +12,12 @@ services:
         source: ./.env
         target: /app/.env
         read_only: true
-      - type: bind
-        source: ./keys
-        target: /app/keys
-        read_only: true
     secrets:
       - db_name
       - db_user
       - db_password
+      - jwt_private_key
+      - jwt_public_key
     command:
       - sh
       - -ec
