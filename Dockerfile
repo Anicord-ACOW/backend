@@ -18,6 +18,11 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+ARG GIT_COMMIT
+ENV GIT_COMMIT=$GIT_COMMIT
+RUN test -n "$GIT_COMMIT" || \
+    (echo "ERROR: GIT_COMMIT build arg is required. Build with: docker compose build --build-arg GIT_COMMIT=\$(git rev-parse HEAD)" >&2; exit 1)
+
 # Copy only the necessary files from the builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
