@@ -1,11 +1,11 @@
 import {Router} from "express";
-import {requireAllRoles} from "@/middleware/auth";
+import {requireAllRoles, requireAuth} from "@/middleware/auth";
 import {Season} from "@/helpers/models/season/season";
 import {APIError} from "@/helpers/api-error";
 import {parseModelPatch} from "@/helpers/patch";
 import {ContractType, ContractTypeSchema} from "@/helpers/models/contracts/contract-type";
 import {readRateLimiter, writeRateLimiter} from "@/helpers/rate-limit";
-import {ContractSchema} from "@/helpers/models/contracts/contract";
+import {Contract, ContractSchema} from "@/helpers/models/contracts/contract";
 import {SignUpSchema} from "@/helpers/models/season/signup";
 
 const router = Router();
@@ -45,10 +45,22 @@ router.post("/seasons/:id/contract-types/:slug/contracts", writeRateLimiter, req
     const contractorSignup = await req.em.findOne(SignUpSchema, {season: season.id, user: result.contractor}, {populate: ["user"]});
     const contracteeSignup = await req.em.findOne(SignUpSchema, {season: season.id, user: result.contractee}, {populate: ["user"]});
     if (contractorSignup === null || contracteeSignup === null) throw new APIError(400, "Both contractor and contractee must be signed up");
-    console.log(result);
     const contract = req.em.create(ContractSchema, result, {partial: true});
     contract.contractType = contractType;
     contract.season = season.id;
+    await req.em.flush();
+    res.json({success: true, contract});
+});
+
+router.patch("/seasons/:id/contracts/:contractId/review", writeRateLimiter, requireAuth, async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+    const contract = await req.em.findOne(Contract, {id: req.params.contractId as string}, {populate: ["contractType"]});
+    if (contract === null) throw new APIError(404, "Contract not found");
+    if (contract.contractee.id !== req.auth!.id) throw new APIError(403, "Not your contract");
+    if (contract.contractType.reviewDeadline < new Date()) throw new APIError(403, "Review deadline has passed");
+    const result = parseModelPatch(req.body, ContractSchema, {include: ["progress", "score", "reviewContent"], partial: true});
+    Object.assign(contract, result);
     await req.em.flush();
     res.json({success: true, contract});
 });

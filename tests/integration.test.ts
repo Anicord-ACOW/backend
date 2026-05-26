@@ -16,7 +16,9 @@ describe("integration test", () => {
      * 2026-05-12T16:00:00.000Z - server starts, create season and contract types
      * 2026-05-13T00:00:00.000Z - season signups start
      * 2026-05-14T00:00:00.000Z - season signups end
-     * 2026-05-15T00:00:00.000Z - contract deadline
+     * 2026-05-15T00:00:00.000Z - contract assignments start
+     * 2026-05-16T00:00:00.000Z - contract assignments end
+     * 2026-05-23T00:00:00.000Z - contract reviews start
      */
     beforeAll(async () => {
         // create db
@@ -718,5 +720,78 @@ describe("integration test", () => {
                 error: pair[0] !== pair[1] ? "Both contractor and contractee must be signed up" : "Contractor and contractee must be distinct",
             });
         }
+    });
+
+    it("allows users to add a review to their own contract", async () => {
+        const token = createAuthToken({sub: "5"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({
+            success: true,
+            contract: {
+                id: "1",
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            },
+        });
+    });
+
+    it("disallows users to add a review to someone else's contract", async () => {
+        vi.setSystemTime("2026-05-14T00:02:00.001Z");
+        const token = createAuthToken({sub: "4"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            success: false,
+            error: "Not your contract",
+        });
+    });
+
+    it("disallows users to add a review after the deadline", async () => {
+        vi.setSystemTime("2026-05-23T00:02:00.001Z");
+        const token = createAuthToken({sub: "5"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            success: false,
+            error: "Review deadline has passed",
+        });
     });
 });
