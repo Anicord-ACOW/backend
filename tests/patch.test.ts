@@ -7,10 +7,20 @@ import {ContractTypeSchema} from "@/helpers/models/contracts/contract-type";
 
 const protectedSignupFields = ["id", "user", "userId"];
 const protectedContractFields = ["season, contractType", "name", "progress", "score", "reviewContent", "verdict"];
+const contractReviewFields = ["progress", "score", "reviewContent"];
 
 describe("parseModelPatch", () => {
     beforeAll(async () => {
         (globalThis as typeof globalThis & {AsyncLocalStorage?: typeof AsyncLocalStorage}).AsyncLocalStorage = AsyncLocalStorage;
+    });
+
+    it("rejects include and exclude fields at the same time", () => {
+        expect(() => parseModelPatch({
+            reviewContent: "this is good",
+            score: "10/10",
+            progress: "-1/-1",
+        }, ContractSchema, {include: contractReviewFields, exclude: ["verdict"]}))
+            .toThrow("Cannot specify both include and exclude");
     });
 
     it("accepts partial objects matching editable model fields", () => {
@@ -29,6 +39,34 @@ describe("parseModelPatch", () => {
             extremeSpecialParticipation: true,
             gameProfileUrl: null,
         });
+
+        const result2 = parseModelPatch(
+          {
+              reviewContent: "this is good",
+              score: "10/10",
+              progress: "-1/-1",
+          },
+          ContractSchema,
+          {include: contractReviewFields, partial: false},
+        );
+
+        expect(result2).toEqual({
+            reviewContent: "this is good",
+            score: "10/10",
+            progress: "-1/-1",
+        });
+
+        const result3 = parseModelPatch(
+          {
+              reviewContent: "this is good",
+          },
+          ContractSchema,
+          {include: contractReviewFields, partial: true},
+        );
+
+        expect(result3).toEqual({
+            reviewContent: "this is good",
+        });
     });
 
     it("rejects non-object bodies", () => {
@@ -36,8 +74,9 @@ describe("parseModelPatch", () => {
     });
 
     it("rejects unknown fields", () => {
-
         expect(() => parseModelPatch({admin: true}, SignUpFormSchema, {exclude: protectedSignupFields}))
+            .toThrow("Unrecognized key");
+        expect(() => parseModelPatch({verdict: "PASS"}, ContractSchema, {include: contractReviewFields}))
             .toThrow("Unrecognized key");
     });
 

@@ -5,6 +5,7 @@ import {APIError} from "@/helpers/api-error";
 
 type ModelPatchOptions = {
     exclude?: readonly string[];
+    include?: readonly string[];
     excludeManagedFields?: boolean;
     excludeForeignKeyFields?: boolean;
     partial?: boolean;
@@ -24,10 +25,12 @@ function isForeignKeyProperty(prop: EntityProperty) {
 
 function shouldSkipProperty(
     prop: EntityProperty,
+    included: Set<string>,
     excluded: Set<string>,
     excludeManagedFields: boolean,
     excludeForeignKeyFields: boolean,
 ) {
+    if (included.size > 0) return !propertyMatchesName(prop, included);
     if (propertyMatchesName(prop, excluded)) return true;
     if (excludeManagedFields && (prop.primary || prop.onCreate || prop.onUpdate)) return true;
     if (excludeForeignKeyFields && isForeignKeyProperty(prop)) return true;
@@ -173,6 +176,10 @@ export function parseModelPatch<TEntity extends object>(
     schema: EntitySchema<TEntity>,
     options: ModelPatchOptions = {},
 ): Partial<TEntity> {
+    if (options.include && options.exclude) {
+        throw new Error("Cannot specify both include and exclude");
+    }
+    const included = new Set(options.include ?? []);
     const excluded = new Set(options.exclude ?? []);
     excluded.add("id");
     excluded.add("createdAt");
@@ -186,7 +193,7 @@ export function parseModelPatch<TEntity extends object>(
             ...rawProp,
             name: rawProp.name ?? propertyName,
         };
-        if (shouldSkipProperty(prop, excluded, excludeManagedFields, excludeForeignKeyFields)) continue;
+        if (shouldSkipProperty(prop, included, excluded, excludeManagedFields, excludeForeignKeyFields)) continue;
 
         const propSchema = zodForProperty(prop);
         if (propSchema) shape[prop.name] = propSchema;
