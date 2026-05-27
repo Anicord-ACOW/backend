@@ -56,7 +56,8 @@ router.patch("/seasons/:id/contracts/:contractId/review", writeRateLimiter, requ
     const season = await Season.getSeasonById(req.em, req.params.id as string);
     if (season === null) throw new APIError(404, "Season not found");
     const contract = await req.em.findOne(Contract, {id: req.params.contractId as string}, {populate: ["contractType"]});
-    if (contract === null) throw new APIError(404, "Contract not found");
+    if (contract === null || contract.season !== season.id) throw new APIError(404, "Contract not found");
+    if (contract.verdict !== "PENDING") throw new APIError(403, "Contract has already been graded");
     if (contract.contractee.id !== req.auth!.id) throw new APIError(403, "Not your contract");
     if (contract.contractType.reviewDeadline < new Date()) throw new APIError(403, "Review deadline has passed");
     const result = parseModelPatch(req.body, ContractSchema, {include: ["progress", "score", "reviewContent"], partial: true});
@@ -65,4 +66,15 @@ router.patch("/seasons/:id/contracts/:contractId/review", writeRateLimiter, requ
     res.json({success: true, contract});
 });
 
+router.patch("/seasons/:id/contracts/:contractId/verdict", writeRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+    if (season.completed) throw new APIError(403, "Cannot change verdict of a completed season");
+    const contract = await req.em.findOne(Contract, {id: req.params.contractId as string}, {populate: ["contractType"]});
+    if (contract === null || contract.season !== season.id) throw new APIError(404, "Contract not found");
+    const result = parseModelPatch(req.body, ContractSchema, {include: ["verdict"], partial: false});
+    Object.assign(contract, result);
+    await req.em.flush();
+    res.json({success: true, contract});
+});
 export default router;
