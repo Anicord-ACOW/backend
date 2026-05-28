@@ -1075,7 +1075,7 @@
         "required" : true
       } ],
       "patch" : {
-        "summary" : "Your PATCH endpoint",
+        "summary" : "Update Contract Review",
         "tags" : [ ],
         "responses" : {
           "200" : {
@@ -1138,7 +1138,7 @@
         "required" : true
       } ],
       "patch" : {
-        "summary" : "Your PATCH endpoint",
+        "summary" : "[Admin] Grade contract",
         "tags" : [ ],
         "responses" : {
           "200" : {
