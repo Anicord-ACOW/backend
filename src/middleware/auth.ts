@@ -24,7 +24,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function requireAllRoles(roles: string[]) {
-    return (req: Request, res: Response, next: NextFunction) => requireAuth(req, res, () => {
+    return (req: Request, res: Response, next: NextFunction) => auth(req, res, () => {
+        if (req.auth === undefined) return next(new APIError(401));
         const userRoles = req.auth!.roles.getItems();
         if (!roles.reduce((acc, role) => acc && userRoles.some(x => x.role === role), true)) return next(new APIError(403));
         next();
