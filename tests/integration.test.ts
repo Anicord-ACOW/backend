@@ -64,6 +64,16 @@ describe("integration test", () => {
         }
     }, 20000);
 
+    it("returns 401 without a token for gated routes", async () => {
+        const response = await fetch(`${baseUrl}/users/me`);
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(body).toMatchObject({
+            success: false,
+        });
+    });
+
     it("returns the success flag and message", async () => {
         const response = await fetch(`${baseUrl}/`);
         const body = await response.json();
@@ -182,6 +192,23 @@ describe("integration test", () => {
             }),
         });
         expect(response2.status).toBe(400);
+    });
+
+    it("doesn't parse json payloads with the wrong content-type", async () => {
+        const token = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons`, {
+            method: "POST",
+            headers: {
+                Authorization: token,
+                "Content-Type": "text/plain",
+            },
+            body: JSON.stringify({
+                name: "Real Season",
+                signupsStart: "2026-05-13T00:00:00.000Z",
+                signupsEnd: "2026-05-14T00:00:00.000Z",
+            })
+        });
+        expect(response.status).toBe(400);
     });
 
     it("allows admins to create seasons", async () => {
