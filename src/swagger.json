@@ -1057,6 +1057,137 @@
           }
         }
       }
+    },
+    "/seasons/{seasonId}/contracts/{contractId}/review" : {
+      "parameters" : [ {
+        "schema" : {
+          "type" : "string"
+        },
+        "name" : "seasonId",
+        "in" : "path",
+        "required" : true
+      }, {
+        "schema" : {
+          "type" : "string"
+        },
+        "name" : "contractId",
+        "in" : "path",
+        "required" : true
+      } ],
+      "patch" : {
+        "summary" : "Update Contract Review",
+        "tags" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "type" : "boolean",
+                      "x-stoplight" : {
+                        "id" : "a7kizkjg0obw6"
+                      }
+                    },
+                    "contract" : {
+                      "$ref" : "#/components/schemas/Contract"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId" : "patch-seasons-seasonId-contracts-contractId-review",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ContractReviewEditable"
+              },
+              "examples" : {
+                "Example 1" : {
+                  "value" : {
+                    "progress" : "-1/-1",
+                    "score" : "10/10",
+                    "reviewContent" : "Roses are red, violets are blue, and the joke is you"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{seasonId}/contracts/{contractId}/verdict" : {
+      "parameters" : [ {
+        "schema" : {
+          "type" : "string"
+        },
+        "name" : "seasonId",
+        "in" : "path",
+        "required" : true
+      }, {
+        "schema" : {
+          "type" : "string"
+        },
+        "name" : "contractId",
+        "in" : "path",
+        "required" : true
+      } ],
+      "patch" : {
+        "summary" : "[Admin] Grade contract",
+        "tags" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "type" : "string",
+                      "x-stoplight" : {
+                        "id" : "glf294gjvkbz8"
+                      }
+                    },
+                    "contract" : {
+                      "$ref" : "#/components/schemas/Contract"
+                    }
+                  }
+                },
+                "examples" : {
+                  "Example 1" : {
+                    "value" : {
+                      "verdict" : "PASS"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId" : "patch-seasons-seasonId-contracts-contractId-review",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ContractVerdictEditable"
+              },
+              "examples" : {
+                "Example 1" : {
+                  "value" : {
+                    "verdict" : "PASS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -1601,6 +1732,108 @@
             "type" : "string"
           },
           "updatedAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ContractVerdictEditable" : {
+        "type" : "object",
+        "x-examples" : {
+          "Example 1" : {
+            "id" : "5",
+            "season" : "1",
+            "contractor" : {
+              "id" : "1",
+              "username" : "admin1",
+              "roles" : [ "Array" ],
+              "createdAt" : "2026-05-16T19:57:23.000Z",
+              "updatedAt" : "2026-05-16T19:57:23.000Z"
+            },
+            "contractee" : {
+              "id" : "6",
+              "username" : "user6",
+              "roles" : [ ],
+              "createdAt" : "2026-05-16T19:57:23.000Z",
+              "updatedAt" : "2026-05-16T19:57:23.000Z"
+            },
+            "contractType" : {
+              "id" : "1",
+              "season" : "1",
+              "name" : "Base Contract",
+              "slug" : "base",
+              "icon" : "kirby",
+              "discordChannelId" : "1077741836749242468",
+              "assignmentStart" : "2026-05-15T00:00:00.000Z",
+              "assignmentEnd" : "2026-05-16T00:00:00.000Z",
+              "reviewDeadline" : "2026-05-23T00:00:00.000Z",
+              "createdAt" : "2026-05-14T00:00:00.000Z",
+              "updatedAt" : "2026-05-14T00:00:00.000Z"
+            },
+            "name" : "",
+            "progress" : "",
+            "score" : "",
+            "reviewContent" : "",
+            "verdict" : "PENDING",
+            "createdAt" : "2026-05-14T00:01:00.001Z",
+            "updatedAt" : "2026-05-14T00:01:00.001Z"
+          }
+        },
+        "properties" : {
+          "verdict" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ContractReviewEditable" : {
+        "type" : "object",
+        "x-examples" : {
+          "Example 1" : {
+            "id" : "5",
+            "season" : "1",
+            "contractor" : {
+              "id" : "1",
+              "username" : "admin1",
+              "roles" : [ "Array" ],
+              "createdAt" : "2026-05-16T19:57:23.000Z",
+              "updatedAt" : "2026-05-16T19:57:23.000Z"
+            },
+            "contractee" : {
+              "id" : "6",
+              "username" : "user6",
+              "roles" : [ ],
+              "createdAt" : "2026-05-16T19:57:23.000Z",
+              "updatedAt" : "2026-05-16T19:57:23.000Z"
+            },
+            "contractType" : {
+              "id" : "1",
+              "season" : "1",
+              "name" : "Base Contract",
+              "slug" : "base",
+              "icon" : "kirby",
+              "discordChannelId" : "1077741836749242468",
+              "assignmentStart" : "2026-05-15T00:00:00.000Z",
+              "assignmentEnd" : "2026-05-16T00:00:00.000Z",
+              "reviewDeadline" : "2026-05-23T00:00:00.000Z",
+              "createdAt" : "2026-05-14T00:00:00.000Z",
+              "updatedAt" : "2026-05-14T00:00:00.000Z"
+            },
+            "name" : "",
+            "progress" : "",
+            "score" : "",
+            "reviewContent" : "",
+            "verdict" : "PENDING",
+            "createdAt" : "2026-05-14T00:01:00.001Z",
+            "updatedAt" : "2026-05-14T00:01:00.001Z"
+          }
+        },
+        "properties" : {
+          "progress" : {
+            "type" : "string"
+          },
+          "score" : {
+            "type" : "string"
+          },
+          "reviewContent" : {
             "type" : "string"
           }
         }

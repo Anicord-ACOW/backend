@@ -16,7 +16,9 @@ describe("integration test", () => {
      * 2026-05-12T16:00:00.000Z - server starts, create season and contract types
      * 2026-05-13T00:00:00.000Z - season signups start
      * 2026-05-14T00:00:00.000Z - season signups end
-     * 2026-05-15T00:00:00.000Z - contract deadline
+     * 2026-05-15T00:00:00.000Z - contract assignments start
+     * 2026-05-16T00:00:00.000Z - contract assignments end
+     * 2026-05-23T00:00:00.000Z - contract reviews start
      */
     beforeAll(async () => {
         // create db
@@ -61,6 +63,16 @@ describe("integration test", () => {
             process.env.MYSQL = originalMysql;
         }
     }, 20000);
+
+    it("returns 401 without a token for gated routes", async () => {
+        const response = await fetch(`${baseUrl}/users/me`);
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(body).toMatchObject({
+            success: false,
+        });
+    });
 
     it("returns the success flag and message", async () => {
         const response = await fetch(`${baseUrl}/`);
@@ -180,6 +192,23 @@ describe("integration test", () => {
             }),
         });
         expect(response2.status).toBe(400);
+    });
+
+    it("doesn't parse json payloads with the wrong content-type", async () => {
+        const token = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons`, {
+            method: "POST",
+            headers: {
+                Authorization: token,
+                "Content-Type": "text/plain",
+            },
+            body: JSON.stringify({
+                name: "Real Season",
+                signupsStart: "2026-05-13T00:00:00.000Z",
+                signupsEnd: "2026-05-14T00:00:00.000Z",
+            })
+        });
+        expect(response.status).toBe(400);
     });
 
     it("allows admins to create seasons", async () => {
@@ -718,5 +747,126 @@ describe("integration test", () => {
                 error: pair[0] !== pair[1] ? "Both contractor and contractee must be signed up" : "Contractor and contractee must be distinct",
             });
         }
+    });
+
+    it("allows users to add a review to their own contract", async () => {
+        vi.setSystemTime("2026-05-14T00:02:00.001Z");
+        for (const [uid, cid] of [["5", "1"], ["4", "2"]]) {
+            const token = createAuthToken({sub: uid}, {expiresIn: "1m"});
+            const response = await fetch(`${baseUrl}/seasons/1/contracts/${cid}/review`, {
+                method: "PATCH",
+                headers: {
+                    Authorization: token,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    score: "10/10",
+                    reviewContent: "Roses are red, violets are blue, and the joke is you",
+                    progress: "-1/-1",
+                })
+            });
+            const body = await response.json();
+            expect(response.status).toBe(200);
+            expect(body).toMatchObject({
+                success: true,
+                contract: {
+                    id: cid,
+                    score: "10/10",
+                    reviewContent: "Roses are red, violets are blue, and the joke is you",
+                    progress: "-1/-1",
+                },
+            });
+        }
+    });
+
+    it("disallows users to add a review to someone else's contract", async () => {
+        vi.setSystemTime("2026-05-14T00:03:00.001Z");
+        const token = createAuthToken({sub: "4"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            success: false,
+            error: "Not your contract",
+        });
+    });
+
+    it("allows admins to grade contracts", async () => {
+        const token = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/verdict`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                verdict: "PASS",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({
+            success: true,
+            contract: {
+                verdict: "PASS",
+            }
+        });
+    });
+
+    it("disallows updating the review after being graded", async () => {
+        const token = createAuthToken({sub: "5"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        console.log(body);
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            success: false,
+            error: "Contract has already been graded",
+        });
+    });
+
+    it("disallows users to add a review after the deadline", async () => {
+        vi.setSystemTime("2026-05-23T00:02:00.001Z");
+        const token = createAuthToken({sub: "2"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/3/review`, {
+            method: "PATCH",
+            headers: {
+                Authorization: token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                score: "10/10",
+                reviewContent: "Roses are red, violets are blue, and the joke is you",
+                progress: "-1/-1",
+            })
+        });
+        const body = await response.json();
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            success: false,
+            error: "Review deadline has passed",
+        });
     });
 });
