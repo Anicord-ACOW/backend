@@ -32,7 +32,8 @@ const client = new AuthorizationCode({
 
 router.get("/auth/discord/login", oauthRateLimiter, (req, res) => {
     const state = generateOAuthState();
-    res.cookie(oAuthStateCookieName(ID), encryptCookie(state, {referrer: req.headers.referer || ""}), {
+    const origin = `${req.protocol}://${req.get("host")}`;
+    res.cookie(oAuthStateCookieName(ID), encryptCookie(state, {referrer: req.headers.referer || "", origin}), {
         signed: true,
         httpOnly: true,
         secure: IS_PROD,
@@ -41,7 +42,7 @@ router.get("/auth/discord/login", oauthRateLimiter, (req, res) => {
         maxAge: 1000 * 60 * 10, // 10 minutes
     });
     res.redirect(client.authorizeURL({
-        redirect_uri: `${process.env.ORIGIN}/auth/discord/callback`,
+        redirect_uri: `${origin}/auth/discord/callback`,
         scope: ["identify", "guilds.members.read"],
         state,
     }));
@@ -68,10 +69,12 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         throw new APIError(400);
     }
 
+    const origin = (payload.origin as string) || `${req.protocol}://${req.get("host")}`;
+
     // exchange code for access token
     const accessToken = await client.getToken({
         code: code as string,
-        redirect_uri: `${process.env.ORIGIN}/auth/discord/callback`,
+        redirect_uri: `${origin}/auth/discord/callback`,
     });
 
     // check for discord server membership
