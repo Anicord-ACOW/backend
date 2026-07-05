@@ -4,6 +4,7 @@ import swaggerUi from "swagger-ui-express";
 import routes from "@/routes";
 import {getEntityManager} from "@/helpers/db";
 import {APIError} from "@/helpers/api-error";
+import cors from "cors";
 
 import swaggerDocument from "@/swagger.json";
 
@@ -13,6 +14,10 @@ app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 app.use(express.json({limit: "50kb"}));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(cors({
+    origin: process.env.FRONTEND_ORIGIN,
+    credentials: true,
+}))
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get("/version", (req, res) => res.json({version: process.env.GIT_COMMIT || "unknown"}));
 app.use((req, res, next) => {

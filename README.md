@@ -17,6 +17,7 @@ Copy `.env.example` to `.env` and populate it
 - `JWT_PUBLIC_KEY_PATH`: `openssl rsa -in private.pem -pubout -outform PEM -out public.pem`
 - `COOKIE_SECRET`: A random string
 - `ORIGIN`: The URL of this deployment
+- `FRONTEND_ORIGIN`: The URL of the frontend deployment
 - `MYSQL`: MySQL/MariaDB connection string `mysql://<username>:<password>@<host>:<port>/<database>`
 Install database schema
 ```bash
