@@ -2,7 +2,6 @@ import {Router} from "express";
 import {AuthorizationCode} from "simple-oauth2";
 import {createAuthToken} from "@/helpers/auth-tokens";
 import {
-    AUTH_TOKEN_COOKIE_NAME,
     encryptCookie,
     generateOAuthState,
     IS_PROD,
@@ -68,8 +67,6 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
         throw new APIError(400);
     }
 
-    const origin = (payload.origin as string) || `${req.protocol}://${req.get("host")}`;
-
     // exchange code for access token
     const accessToken = await client.getToken({
         code: code as string,
@@ -92,20 +89,16 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     user.avatarUrl = `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=128`;
     await em.flush();
     const token = await createAuthToken({sub: data.user.id});
-    res.cookie(AUTH_TOKEN_COOKIE_NAME, token, {
-        signed: false,
-        httpOnly: true,
-        secure: IS_PROD,
-        sameSite: "lax" as const,
-        path: "/",
-        maxAge: 7 * 86400 * 1000, // 7 days
-    });
 
+    // Redirect to the frontend callback route with the token as a query parameter.
+    // The frontend will set the cookie on its own domain.
+    const frontendOrigin = process.env.FRONTEND_ORIGIN || process.env.ORIGIN;
+    const callbackUrl = new URL("/auth/callback", frontendOrigin);
+    callbackUrl.searchParams.set("token", token);
     if (payload.referrer !== "") {
-        res.redirect(payload.referrer);
-    } else {
-        res.json({success: true, token});
+        callbackUrl.searchParams.set("redirect", payload.referrer);
     }
+    res.redirect(callbackUrl.toString());
 });
 
 export default router;
