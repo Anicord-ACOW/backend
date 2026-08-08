@@ -3,7 +3,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json ./
 COPY pnpm-lock.yaml ./
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9.15.4
 RUN pnpm install
 
 # Stage 2: Build the app
