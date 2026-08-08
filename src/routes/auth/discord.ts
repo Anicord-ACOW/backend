@@ -95,6 +95,7 @@ router.get("/auth/discord/callback", oauthRateLimiter, async (req, res) => {
     res.cookie(AUTH_TOKEN_COOKIE_NAME, token, {
         signed: false,
         httpOnly: true,
+        domain: process.env.COOKIE_DOMAIN,
         secure: IS_PROD,
         sameSite: "lax" as const,
         path: "/",

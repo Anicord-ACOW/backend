@@ -18,6 +18,7 @@ Copy `.env.example` to `.env` and populate it
 - `COOKIE_SECRET`: A random string
 - `ORIGIN`: The URL of this deployment
 - `FRONTEND_ORIGIN`: The URL of the frontend deployment
+- `COOKIE_DOMAIN`: The domain shared by the frontend and backend
 - `MYSQL`: MySQL/MariaDB connection string `mysql://<username>:<password>@<host>:<port>/<database>`
 Install database schema
 ```bash
