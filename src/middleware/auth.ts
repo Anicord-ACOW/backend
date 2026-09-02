@@ -4,14 +4,23 @@ import {User} from "@/helpers/models/user";
 import {APIError} from "@/helpers/api-error";
 import {AUTH_TOKEN_COOKIE_NAME} from "@/helpers/auth";
 
+// Helper to get token from either cookie name
+function getCookieToken(req: Request): string | undefined {
+    return req.cookies[AUTH_TOKEN_COOKIE_NAME] || req.cookies['auth-token'];
+}
+
 export async function auth(req: Request, res: Response, next: NextFunction) {
-    const token = req.headers.authorization || req.cookies[AUTH_TOKEN_COOKIE_NAME];
+    const token = req.headers.authorization || getCookieToken(req);
     if (token === undefined) return next();
 
-    const payload = verifyAuthToken(token);
-    const user = await req.em.findOne(User, BigInt(payload.sub!), {populate: ["roles"]});
-    if (user) {
-        req.auth = user;
+    try {
+        const payload = verifyAuthToken(token);
+        const user = await req.em.findOne(User, BigInt(payload.sub!), {populate: ["roles"]});
+        if (user) {
+            req.auth = user;
+        }
+    } catch {
+        // invalid token
     }
     next();
 }
