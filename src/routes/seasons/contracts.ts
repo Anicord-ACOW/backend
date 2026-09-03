@@ -52,6 +52,112 @@ router.post("/seasons/:id/contract-types/:slug/contracts", writeRateLimiter, req
     res.json({success: true, contract});
 });
 
+router.get("/seasons/:id/contracts", readRateLimiter, requireAuth, async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+
+    const userRoles = req.auth!.roles.getItems();
+    const isAdmin = userRoles.some(x => x.role === "admin");
+
+    let contracts;
+    if (isAdmin) {
+        contracts = await req.em.find(Contract, {season: season.id}, {populate: ["contractor", "contractee", "contractType"], orderBy: {id: "asc"}});
+    } else {
+        contracts = await req.em.find(
+            Contract,
+            {
+                season: season.id,
+                $or: [
+                    {contractor: req.auth!.id},
+                    {contractee: req.auth!.id},
+                ],
+            },
+            {populate: ["contractor", "contractee", "contractType"], orderBy: {id: "asc"}}
+        );
+    }
+
+    res.json({success: true, contracts});
+});
+
+router.post("/seasons/:id/contract-types/:slug/auto-assign", writeRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+    if (season.completed) throw new APIError(400, "Cannot assign contracts for a completed season");
+
+    const contractType = await ContractType.getContractTypeById(req.em, season.id.toString(), req.params.slug as string);
+    if (contractType === null) throw new APIError(404, "Contract type not found");
+
+    const signups = await req.em.find(SignUpSchema, {season: season.id}, {populate: ["user"]});
+    if (signups.length < 2) {
+        throw new APIError(400, "At least 2 participants required to auto-assign contracts");
+    }
+
+    // Shuffle signups using Fisher-Yates
+    const shuffled = [...signups];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Remove any existing contracts for this contract type in this season before auto-assigning
+    const existing = await req.em.find(Contract, {season: season.id, contractType: contractType.id});
+    for (const c of existing) {
+        req.em.remove(c);
+    }
+
+    const createdContracts: Contract[] = [];
+    for (let i = 0; i < shuffled.length; i++) {
+        const contractor = shuffled[i].user;
+        const contractee = shuffled[(i + 1) % shuffled.length].user;
+
+        const contract = req.em.create(Contract, {
+            season: season.id,
+            contractType: contractType,
+            contractor: contractor,
+            contractee: contractee,
+            name: "",
+            progress: "",
+            score: "",
+            reviewContent: "",
+            verdict: "PENDING",
+        });
+        createdContracts.push(contract);
+    }
+
+    await req.em.flush();
+    res.json({success: true, count: createdContracts.length, contracts: createdContracts});
+});
+
+router.patch("/seasons/:id/contracts/:contractId/assign", writeRateLimiter, requireAuth, async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+    if (season.completed) throw new APIError(400, "Cannot assign contract on a completed season");
+
+    const contract = await req.em.findOne(Contract, {id: req.params.contractId as string}, {populate: ["contractType", "contractor"]});
+    if (contract === null || contract.season !== season.id) throw new APIError(404, "Contract not found");
+
+    const userRoles = req.auth!.roles.getItems();
+    const isAdmin = userRoles.some(x => x.role === "admin");
+
+    if (!isAdmin && contract.contractor.id !== req.auth!.id) {
+        throw new APIError(403, "Not your contract to assign");
+    }
+
+    if (!isAdmin) {
+        if (contract.contractType.assignmentStart > new Date()) {
+            throw new APIError(400, "Assignment period has not started yet");
+        }
+        if (contract.contractType.assignmentEnd < new Date()) {
+            throw new APIError(400, "Assignment period has ended");
+        }
+    }
+
+    const result = parseModelPatch(req.body, ContractSchema, {include: ["name"], partial: false});
+    Object.assign(contract, result);
+    await req.em.flush();
+    res.json({success: true, contract});
+});
+
 router.patch("/seasons/:id/contracts/:contractId/review", writeRateLimiter, requireAuth, async (req, res) => {
     const season = await Season.getSeasonById(req.em, req.params.id as string);
     if (season === null) throw new APIError(404, "Season not found");

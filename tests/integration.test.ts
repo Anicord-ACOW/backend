@@ -869,4 +869,82 @@ describe("integration test", () => {
             error: "Review deadline has passed",
         });
     });
+
+    it("allows listing all seasons", async () => {
+        const response = await fetch(`${baseUrl}/seasons`);
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(Array.isArray(body.seasons)).toBe(true);
+        expect(body.seasons.length).toBeGreaterThan(0);
+    });
+
+    it("allows admins to retrieve all contracts and regular users to retrieve only their own", async () => {
+        const adminToken = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const responseAdmin = await fetch(`${baseUrl}/seasons/1/contracts`, {
+            headers: {Authorization: adminToken},
+        });
+        const bodyAdmin = await responseAdmin.json();
+        expect(responseAdmin.status).toBe(200);
+        expect(bodyAdmin.success).toBe(true);
+        expect(bodyAdmin.contracts.length).toBe(5);
+
+        const userToken = createAuthToken({sub: "6"}, {expiresIn: "1m"});
+        const responseUser = await fetch(`${baseUrl}/seasons/1/contracts`, {
+            headers: {Authorization: userToken},
+        });
+        const bodyUser = await responseUser.json();
+        expect(responseUser.status).toBe(200);
+        expect(bodyUser.success).toBe(true);
+        // User 6 is contractor in pair [6, 5] and contractee in pair [1, 6] -> total 2
+        expect(bodyUser.contracts.length).toBe(2);
+    });
+
+    it("allows contractor to assign title during assignment period", async () => {
+        vi.setSystemTime("2026-05-15T12:00:00.000Z");
+        // Contract 1: contractor is 6, contractee is 5
+        const contractorToken = createAuthToken({sub: "6"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contracts/1/assign`, {
+            method: "PATCH",
+            headers: {
+                Authorization: contractorToken,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: "Sousou no Frieren (Anime)",
+            }),
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.contract.name).toBe("Sousou no Frieren (Anime)");
+    });
+
+    it("allows contractor to view their contractee signup form", async () => {
+        // User 6 is contractor of user 5
+        const contractorToken = createAuthToken({sub: "6"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/users/5/signup-form`, {
+            headers: {Authorization: contractorToken},
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+    });
+
+    it("allows admins to auto-assign contracts for a contract type", async () => {
+        const adminToken = createAuthToken({sub: "1"}, {expiresIn: "1m"});
+        const response = await fetch(`${baseUrl}/seasons/1/contract-types/base/auto-assign`, {
+            method: "POST",
+            headers: {
+                Authorization: adminToken,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}),
+        });
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.count).toBe(5);
+        expect(body.contracts.length).toBe(5);
+    });
 });

@@ -18,10 +18,29 @@ router.get("/users/me/signup-form", readRateLimiter, requireAuth, async (req, re
     });
 });
 
-router.get("/users/:userId/signup-form", readRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
-    const userId = BigInt(req.params.userId as string);
+import {Contract} from "@/helpers/models/contracts/contract";
+import {APIError} from "@/helpers/api-error";
 
+router.get("/users/:userId/signup-form", readRateLimiter, requireAuth, async (req, res) => {
+    const userId = BigInt(req.params.userId as string);
     const em = getEntityManager();
+
+    const userRoles = req.auth!.roles.getItems();
+    const isAdmin = userRoles.some(x => x.role === "admin");
+    const isSelf = req.auth!.id === userId;
+
+    if (!isAdmin && !isSelf) {
+        // Check if req.auth is the contractor for this user in an active contract
+        const activeContract = await em.findOne(Contract, {
+            contractor: req.auth!.id,
+            contractee: userId,
+            season: {completed: false},
+        });
+        if (!activeContract) {
+            throw new APIError(403, "Not authorized to view this user's preferences");
+        }
+    }
+
     const form = await findOneOrCreate(em, SignupForm, {user: userId});
     res.json({
         success: true,

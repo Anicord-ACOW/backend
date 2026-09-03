@@ -28,9 +28,24 @@ router.post("/seasons", writeRateLimiter, requireAllRoles(["admin"]), async (req
     res.json({success: true, season});
 });
 
+router.get("/seasons", readRateLimiter, async (req, res) => {
+    const seasons = await req.em.find(Season, {}, {orderBy: {id: "desc"}});
+    res.json({success: true, seasons});
+});
+
 router.get("/seasons/:id", readRateLimiter, async (req, res) => {
     const season = await Season.getSeasonById(req.em, req.params.id as string);
     if (season === null) throw new APIError(404, "Season not found");
+    res.json({success: true, season});
+});
+
+router.patch("/seasons/:id", writeRateLimiter, requireAllRoles(["admin"]), async (req, res) => {
+    const season = await Season.getSeasonById(req.em, req.params.id as string);
+    if (season === null) throw new APIError(404, "Season not found");
+
+    const result = parseModelPatch(req.body, SeasonSchema, {partial: true});
+    Object.assign(season, result);
+    await req.em.flush();
     res.json({success: true, season});
 });
 
