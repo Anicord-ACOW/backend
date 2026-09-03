@@ -5,6 +5,10 @@ import {parseModelPatch} from "@/helpers/patch";
 import {requireAllRoles, requireAuth} from "@/middleware/auth";
 import {readRateLimiter, writeRateLimiter} from "@/helpers/rate-limit";
 
+import {Contract} from "@/helpers/models/contracts/contract";
+import {Season} from "@/helpers/models/season/season";
+import {APIError} from "@/helpers/api-error";
+
 const router = Router();
 
 router.get("/users/me/signup-form", readRateLimiter, requireAuth, async (req, res) => {
@@ -18,9 +22,6 @@ router.get("/users/me/signup-form", readRateLimiter, requireAuth, async (req, re
     });
 });
 
-import {Contract} from "@/helpers/models/contracts/contract";
-import {APIError} from "@/helpers/api-error";
-
 router.get("/users/:userId/signup-form", readRateLimiter, requireAuth, async (req, res) => {
     const userId = BigInt(req.params.userId as string);
     const em = getEntityManager();
@@ -31,11 +32,14 @@ router.get("/users/:userId/signup-form", readRateLimiter, requireAuth, async (re
 
     if (!isAdmin && !isSelf) {
         // Check if req.auth is the contractor for this user in an active contract
-        const activeContract = await em.findOne(Contract, {
-            contractor: req.auth!.id,
-            contractee: userId,
-            season: {completed: false},
-        });
+        const activeSeasons = await em.find(Season, {completed: false});
+        const activeContract = activeSeasons.length > 0
+            ? await em.findOne(Contract, {
+                contractor: req.auth!.id,
+                contractee: userId,
+                season: {$in: activeSeasons.map(s => s.id)},
+            })
+            : null;
         if (!activeContract) {
             throw new APIError(403, "Not authorized to view this user's preferences");
         }
