@@ -10,7 +10,7 @@ function getCookieToken(req: Request): string | undefined {
 }
 
 export async function auth(req: Request, res: Response, next: NextFunction) {
-    const token = req.headers.authorization || getCookieToken(req);
+    const token = req.headers.authorization || req.cookies[AUTH_TOKEN_COOKIE_NAME];
     if (token === undefined) return next();
 
     try {
@@ -19,8 +19,8 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         if (user) {
             req.auth = user;
         }
-    } catch {
-        // invalid token
+    } catch (_) {
+        console.warn("Failed to verify auth token");
     }
     next();
 }
